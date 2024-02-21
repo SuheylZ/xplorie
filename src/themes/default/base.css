@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .body {
+    @pply bg-green-600 m-0 flex width[320px] height[100vh];
+    place-items: center;
+  }
+}

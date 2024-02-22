@@ -11,7 +11,6 @@ export enum Days {
   Thursday,
   Friday
 }
-
 export enum Months {
   January = 0,
   February,
@@ -26,8 +25,18 @@ export enum Months {
   December
 }
 
-dayjs.extend(weekday)
+export type Schedule = Map<{ month: number; year: number }, Date[]>
+export type Monthly = "weekday" | "date"
+export type RecurranceLimit = Date | number
 
+const isDateLimit = (r: RecurranceLimit): r is Date => r instanceof Date
+const isCountLimit = (r: RecurranceLimit): r is number => typeof r === "number"
+dayjs.extend(weekday)
+/*
+=========================
+  Internal Functions
+=========================
+*/
 function immutable(source: Date) {
   const target = dayjs(source)
   const targetDay = target.day()
@@ -65,28 +74,19 @@ function mutable(source: Dayjs) {
 
   return target
 }
-/**
- * Map<{ month: number; year: number }, Dayjs[]>
- */
-export type Schedule = Map<{ month: number; year: number }, Date[]>
-export type Monthly = "weekday" | "date"
-
-export type RecurranceLimit = Date | number
-
-const isDateLimit = (r: RecurranceLimit): r is Date => r instanceof Date
-const isCountLimit = (r: RecurranceLimit): r is number => typeof r === "number"
-
 function createSameOrBefore(arg: Date) {
   const pivot = immutable(arg)
   return (target: Dayjs) => target.isBefore(pivot) || target.isSame(pivot)
 }
+function toSchedule(arg: Dayjs[]) {
+  const dates = arg.map((x) => mutable(x))
 
-/*
-=========================
-  Calculator Functions
-=========================
-*/
+  const schedule: Schedule = groupBy(dates, (x) => {
+    return { month: x.getMonth(), year: x.getFullYear() }
+  })
 
+  return schedule
+}
 export function _weeklyByDay(start: Date, day: Days, limit: RecurranceLimit) {
   const startsOn = immutable(start)
   const arr: Dayjs[] = []
@@ -121,16 +121,6 @@ export function _weeklyByDay(start: Date, day: Days, limit: RecurranceLimit) {
   }
   return arr
 }
-function toSchedule(arg: Dayjs[]) {
-  const dates = arg.map((x) => mutable(x))
-
-  const schedule: Schedule = groupBy(dates, (x) => {
-    return { month: x.getMonth(), year: x.getFullYear() }
-  })
-
-  return schedule
-}
-
 function monthlyByDate(start: Date, limit: RecurranceLimit): Dayjs[] {
   const startsOn = immutable(start)
   const days: Dayjs[] = []
@@ -154,7 +144,6 @@ function monthlyByDate(start: Date, limit: RecurranceLimit): Dayjs[] {
 
   return days
 }
-
 function monthlyByWeekday(start: Date, limit: RecurranceLimit): Dayjs[] {
   const startsOn = immutable(start)
   const days: Dayjs[] = []
@@ -200,6 +189,11 @@ function monthlyByWeekday(start: Date, limit: RecurranceLimit): Dayjs[] {
   return days
 }
 
+/*
+=========================
+  Public Functions
+=========================
+*/
 
 /**
  * calculates daily recurrance either by date or count

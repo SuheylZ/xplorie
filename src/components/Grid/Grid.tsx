@@ -44,25 +44,3 @@ export type GridFieldProps<T> = {
   onPageChanged?: (page: number, size: number) => void
 }
 
-
-
-export function GridField<T>(props: GridFieldProps<T>){
-  return (
-
-    <td> </td>
-  )
-}
-
-interface MyGrid<T extends IdType> extends  React.FC<GridProps<T>>{
-   Field: React.FC<GridFieldProps<T>>[]
-}
-
-const CustomGrid: MyGrid<T> ={
- 
-
-}
-
-CustomGrid.Field = (props: ) {
-
-  return <></>
-}

@@ -1,17 +1,18 @@
-import * as dayjs from "dayjs"
-import { Queue } from './queue'
-import _ from "underscore"
+import dayjs from "dayjs"
+import weekday from "dayjs/plugin/weekday"
+import updateLocale from "dayjs/plugin/updateLocale"
 import { groupBy, unique } from "./algorithms"
 
 export enum Days {
-  Sunday = 0,
+  Saturday, // it should be sunday but dayjs has Saturday as first day
+  Sunday,
   Monday,
   Tuesday,
   Wednesday,
   Thursday,
-  Frifday,
-  Saturday,
+  Friday
 }
+
 export enum Months {
   January = 1,
   February,
@@ -23,8 +24,37 @@ export enum Months {
   Septemnber,
   October,
   November,
-  December,
+  December
 }
+
+dayjs.extend(weekday)
+dayjs.extend(updateLocale)
+dayjs.updateLocale("en", {
+  weekdays: [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday"
+  ],
+  weekStart: 0,
+  months: [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+  ]
+})
 
 export type Schedule = {
   Month: Months
@@ -37,20 +67,18 @@ export const EmptyCircuit: Circuit = []
 
 export type RecurranceLimit = Date | number
 
+const date = (a: Date) => dayjs(a).add(1, "day")
 const isDateLimit = (r: RecurranceLimit): r is Date => r instanceof Date
-const isCountLimit = (r: RecurranceLimit): r is number => typeof r === 'number'
-const thisYear = new Date().getFullYear()
-const daysInMonth = (month: Months, year: number =thisYear): number => dayjs(new Date(year, month, 1)).daysInMonth()
+const isCountLimit = (r: RecurranceLimit): r is number => typeof r === "number"
 
-
-
-function weeklyOnce(start: Date, day: Days, limit: RecurranceLimit) {
-  const startsOn = dayjs(start)
+export function weeklyOnce(start: Date, day: Days, limit: RecurranceLimit) {
+  const startsOn = date(start)
   const arr: dayjs.Dayjs[] = []
 
   const current = (() => {
     const diff = day - startsOn.day()
-    if (diff < 0) return startsOn.add(diff, "day")
+
+    if (diff < 0) return startsOn.add(Math.abs(diff) + 1, "day")
     else if (diff > 0) return startsOn.add(diff, "day").add(7, "day")
     else return startsOn
   })()
@@ -72,48 +100,38 @@ function weeklyOnce(start: Date, day: Days, limit: RecurranceLimit) {
   }
   return arr
 }
-
-export function daily(start: Date, limit: RecurranceLimit) {
-  const startsOn = dayjs(start)
-  const que = new Queue<dayjs.Dayjs>()
-
-  const count = (() => {
-    if (isDateLimit(limit)) return dayjs(limit).diff(startsOn, "days")
-    else return limit
-  })()
-
-  const latest = que.last() ?? startsOn
-  for (let i = 0; i < count; i++) {
-    que.enque(latest.add(i, "day"))
-  }
-
-  // const process = (curr: dayjs.Dayjs) => {
-  //   que.enque(curr)
-  //   return curr.add(1, 'day')
-  // }
-  // if (isDateLimit(limit)) {
-  //   const endsOn = dayjs(limit)
-  //   let latest = que.last() ?? startsOn
-  //   while (latest.isBefore(endsOn)) {
-  //     latest = process(latest)
-  //   }
-  // } else {
-  //   let latest = que.last() ?? startsOn
-  //   while (que.count() <= limit) {
-  //     latest = process(latest)
-  //   }
-  // }
-
-  return groupBy(que.toArray(), (x) => {
+function groupDates(arg: dayjs.Dayjs[]) {
+  return groupBy(arg, (x) => {
     return { month: x.month(), year: x.year() }
   })
 }
+
+export function daily(start: Date, limit: RecurranceLimit) {
+  const startsOn = date(start)
+  const arr: dayjs.Dayjs[] = []
+
+  const count = (() => {
+    if (isDateLimit(limit)) return date(limit).diff(startsOn, "days")
+    else return limit
+  })()
+
+  const latest = arr.at(-1) ?? startsOn
+  for (let i = 0; i < count; i++) {
+    arr.push(latest.add(i, "day"))
+  }
+
+  return groupDates(arr)
+}
 export function weekly(start: Date, days: Days[], limit: RecurranceLimit) {
-  const a1 = unique(days).flatMap(day => weeklyOnce(start, day, limit))
+  const a1 = unique(days).flatMap((day) => weeklyOnce(start, day, limit))
   const a2 = unique(a1)
-  const a3 = groupBy(a2, x => { return { month: x.month(), year: x.year() } })
+  const a3 = groupBy(a2, (x) => {
+    return { month: x.month(), year: x.year() }
+  })
   return a3
 }
-export function monthly(start: Date, type: "byWeekday" | "byDate", limit: RecurranceLimit) {
-  
-}
+// export function monthly(
+//   start: Date,
+//   type: "byWeekday" | "byDate",
+//   limit: RecurranceLimit
+// ) {}

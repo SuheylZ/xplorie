@@ -1,5 +1,5 @@
-import * as dayjs from 'dayjs'
-import { Queue } from './queue'
+import dayjs from "dayjs"
+import { Queue } from "./queue"
 
 export enum Days {
   Sunday = 0,
@@ -8,7 +8,7 @@ export enum Days {
   Wednesday,
   Thursday,
   Frifday,
-  Saturday,
+  Saturday
 }
 export enum Months {
   January = 1,
@@ -21,7 +21,7 @@ export enum Months {
   Septemnber,
   October,
   November,
-  December,
+  December
 }
 
 export type Schedule = {
@@ -36,7 +36,7 @@ export const EmptyCircuit: Circuit = []
 export type RecurranceLimit = Date | number
 
 const isDateLimit = (r: RecurranceLimit): r is Date => r instanceof Date
-const isCountLimit = (r: RecurranceLimit): r is number => typeof r === 'number'
+const isCountLimit = (r: RecurranceLimit): r is number => typeof r === "number"
 const monthDays = (
   month: Months,
   year: number = new Date().getFullYear()
@@ -51,13 +51,13 @@ export function dailyRecurrance(start: Date, limit: RecurranceLimit) {
     let current = startsOn
     while (current.isBefore(endsOn) || current.isSame(endsOn)) {
       que.enque(current)
-      current = current.add(1, 'day')
+      current = current.add(1, "day")
     }
   } else {
     let current = startsOn
     while (que.count() < limit) {
       que.enque(current)
-      current = current.add(1, 'day')
+      current = current.add(1, "day")
     }
   }
   return que.toArray()
@@ -74,12 +74,12 @@ export function weeklyRecurrance(
   if (isCountLimit(limit)) {
     while (que.count() < limit) {
       que.enque(current)
-      current = current.add(7, 'day')
+      current = current.add(7, "day")
     }
   } else {
     while (current.isBefore(limit) || current.isSame(limit)) {
       que.enque(current)
-      current = current.add(7, 'day')
+      current = current.add(7, "day")
     }
   }
 }

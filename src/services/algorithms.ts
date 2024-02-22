@@ -10,28 +10,57 @@ export function unique<T>(arr: Iterable<T>) {
 
 export function groupBy<T, Key>(arr: Iterable<T>, fn: (arg: T) => Key) {
   const map = new Map<Key, T[]>()
+  const keyMap = new Map<string, Key>()
 
   for (const value of arr) {
     const key = fn(value)
-    if (map.has(key)) map.get(key)?.push(value)
-    else map.set(key, [value])
+    const str = JSON.stringify(key)
+
+    if (!keyMap.has(str)) keyMap.set(str, key)
+
+    const realKey = keyMap.get(str)!
+
+    if (map.has(realKey)) map.get(realKey)?.push(value)
+    else map.set(realKey, [value])
   }
+
   return map
 }
 
-export function sortBy<T>(arr: Iterable<T>, cmp: (a: T, b: T) => number): T[] {
+/**
+ *
+ * @param arr : source array
+ * @param cmp : (a,b)=> performs b-a; -1 if a is bigger, 1 if b is bigger, 0 if equal // b-a
+ * @returns sorted new array, previous array remains the same
+ */
+export function sortBy<T>(arr: T[], cmp: (a: T, b: T) => number): T[] {
   const left: T[] = []
   const right: T[] = []
 
-  let pivot: T | undefined
-  for (const item of arr) {
-    if (!pivot) pivot = item
-    else {
-      const diff = cmp(pivot, item)
-      if (diff <= 0) left.push(item)
-      else right.push(item)
+  if (arr.length === 0) return []
+  else {
+    const pivot = arr.at(0)!
+    for (const it of arr.toSpliced(0, 1)) {
+      const diff = cmp(pivot, it)
+      if (diff > 0) right.push(it)
+      else if (diff <= 0) left.push(it)
     }
-  }
 
-  return sortBy(left, cmp).concat(sortBy(right, cmp))
+    return [...sortBy(left, cmp), pivot, ...sortBy(right, cmp)]
+  }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

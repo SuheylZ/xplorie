@@ -50,6 +50,16 @@ export function sortBy<T>(arr: T[], cmp: (a: T, b: T) => number): T[] {
   }
 }
 
+/**
+ * repeats the action() until the cond() is true
+ * @param cond ()=> boolean
+ * @param action ()=>void
+ */
+export function repeat(cond: () => boolean, action: () => void) {
+  while (cond()) {
+    action()
+  }
+}
 
 
 

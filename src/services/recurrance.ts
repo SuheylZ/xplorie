@@ -199,6 +199,8 @@ function monthlyByWeekday(start: Date, limit: RecurranceLimit): Dayjs[] {
 
   return days
 }
+
+
 /**
  * calculates daily recurrance either by date or count
  * @param start Date, where to start from
@@ -243,7 +245,6 @@ export function weekly(start: Date, days: Days[], limit: RecurranceLimit) {
 
   return toSchedule(arr)
 }
-
 /**
  * Claculates monthly recurrance either by day order or by day
  * @param start Date, start date

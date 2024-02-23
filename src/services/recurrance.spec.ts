@@ -1,7 +1,7 @@
 import {
   Days,
   daily,
-  _weeklyByDay,
+  weeklyByDay,
   weekly,
   Months,
   monthly,
@@ -38,6 +38,12 @@ describe("recurrance", () => {
       expect(months).toContain(month)
     }
   }
+  function dateDiffInDays(a: Date, b: Date) {
+    const _MS_PER_DAY = 1000 * 60 * 60 * 24
+    const utc1 = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())
+    const utc2 = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate())
+    return Math.abs(Math.floor((utc2 - utc1) / _MS_PER_DAY))
+  }
 
   describe("internals funtions", () => {
     describe("Weekly", () => {
@@ -45,19 +51,19 @@ describe("recurrance", () => {
         const limit = 5
 
         test("same day", () => {
-          const a1 = _weeklyByDay(thursdayFeb1, Days.Thursday, limit)
+          const a1 = weeklyByDay(thursdayFeb1, Days.Thursday, limit)
           expect(a1.length).toBe(5)
           a1.forEach((x) => expect(x.day()).toBe(Days.Thursday))
         })
 
         test("past day", () => {
-          const a1 = _weeklyByDay(thursdayFeb1, Days.Monday, limit)
+          const a1 = weeklyByDay(thursdayFeb1, Days.Monday, limit)
           expect(a1.length).toBe(5)
           a1.forEach((x) => expect(x.day()).toBe(Days.Monday))
         })
 
         test("future day", () => {
-          const a1 = _weeklyByDay(thursdayFeb1, Days.Friday, limit)
+          const a1 = weeklyByDay(thursdayFeb1, Days.Friday, limit)
           expect(a1.length).toBe(5)
           a1.forEach((x) => expect(x.day()).toBe(Days.Friday))
         })
@@ -65,19 +71,19 @@ describe("recurrance", () => {
 
       describe("limit: Date", () => {
         test("same day", () => {
-          const a1 = _weeklyByDay(thursdayFeb1, Days.Saturday, fridayMarch1)
+          const a1 = weeklyByDay(thursdayFeb1, Days.Saturday, fridayMarch1)
           expect(a1.length).toBe(4)
           a1.forEach((x) => expect(x.day()).toBe(Days.Saturday))
         })
 
         test("past day", () => {
-          const a1 = _weeklyByDay(thursdayFeb1, Days.Monday, fridayMarch1)
+          const a1 = weeklyByDay(thursdayFeb1, Days.Monday, fridayMarch1)
           expect(a1.length).toBe(4)
           a1.forEach((x) => expect(x.day()).toBe(Days.Monday))
         })
 
         test("future day", () => {
-          const a1 = _weeklyByDay(thursdayFeb1, Days.Friday, fridayMarch1)
+          const a1 = weeklyByDay(thursdayFeb1, Days.Friday, fridayMarch1)
           expect(a1.length).toBe(5)
           a1.forEach((x) => expect(x.day()).toBe(Days.Friday))
         })
@@ -95,8 +101,11 @@ describe("recurrance", () => {
       })
 
       test("until a date", () => {
-        const a1 = daily(thursdayFeb1, new Date(2024, 2, 1))
-        const months = unwrap(a1)[1]
+        const a1 = daily(thursdayFeb1, fridayMarch1)
+        const [days, months] = unwrap(a1)
+        const diff = dateDiffInDays(fridayMarch1, thursdayFeb1) + 1
+
+        expect(days.length).toBe(diff)
         expect(months.length).toBeLessThanOrEqual(2)
       })
     })
@@ -146,6 +155,17 @@ describe("recurrance", () => {
           expect(months.length).toBeLessThanOrEqual(5)
           days.forEach((date) => expect(date.getDate()).toBe(1))
         })
+
+        test("31st of every month", () => {
+          const wednsday31January = new Date(2024, 0, 31)
+          const dates = monthly(wednsday31January, "date", 5)
+          const [days, months] = unwrap(dates)
+
+          expect(days.length).toBe(5)
+          expect(months.length).toBeLessThanOrEqual(5)
+          expect(months.every((x) => x != Months.February)).toBeTruthy()
+          days.forEach((date) => expect(date.getDate()).toBe(1))
+        })
       })
 
       describe("until a date", () => {
@@ -171,4 +191,16 @@ describe("recurrance", () => {
     })
   })
 })
+
+
+
+
+
+
+
+
+
+
+
+
 

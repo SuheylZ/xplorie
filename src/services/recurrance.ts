@@ -76,11 +76,6 @@ function mutable(source: Dayjs) {
 
   return target
 }
-// function isSameDate(a1: Dayjs, a2: Dayjs) {
-//   const d1 = mutable(a1)
-//   const d2 = mutable(a2)
-//   return d1.getDate() === d2.getDate()
-// }
 function toSchedule(arg: Dayjs[]) {
   const dates = arg.map((x) => mutable(x))
 
@@ -190,7 +185,6 @@ function monthlyByWeekday(start: Date, limit: RecurranceLimit): Dayjs[] {
   Public Functions
 =========================
 */
-
 /**
  * calculates daily recurrance either by date or count
  * @param start Date, where to start from
@@ -241,13 +235,7 @@ export function weekly(start: Date, days: Days[], limit: RecurranceLimit) {
  * @returns Schedule
  */
 export function monthly(start: Date, type: Monthly, limit: RecurranceLimit) {
-  const days = (() => {
-    if (type === "date") {
-      return monthlyByDate(start, limit)
-    } else {
-      return monthlyByWeekday(start, limit)
-    }
-  })()
-
+  const calculate = type === "date" ? monthlyByDate : monthlyByWeekday
+  const days = calculate(start, limit)
   return toSchedule(days)
 }

@@ -135,7 +135,6 @@ function monthlyByDate(start: Date, limit: RecurranceLimit) {
 function monthlyByWeekday(start: Date, limit: RecurranceLimit) {
   const startsOn = immutable(start)
   const weekday = startsOn.day()
-
   const calculate = createWeekCalculator(startsOn.startOf("month"), limit)
   const weeks = calculate(startsOn.day())
   const order =

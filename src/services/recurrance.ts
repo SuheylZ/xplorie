@@ -30,7 +30,6 @@ export type Monthly = "weekday" | "date"
 export type RecurranceLimit = Date | number
 export type UniqueDays = Set<Dayjs>
 
-const uniqueDays = () => new Set<Dayjs>() as UniqueDays
 const isDateLimit = (r: RecurranceLimit): r is Date => r instanceof Date
 const sortDates = (set: UniqueDays) =>
   sortBy(Array.from(set), (a, b) => (a.isAfter(b) ? -1 : a.isSame(b) ? 0 : 1))
@@ -41,7 +40,6 @@ dayjs.extend(utc)
   Internal Functions
 =========================
 */
-
 
 function immutable(source: Date) {
   const adjusted = new Date(source.setHours(0, 0, 0))
@@ -162,22 +160,20 @@ function monthlyByWeekday(start: Date, limit: RecurranceLimit) {
   const weeks = calculate(startsOn.day())
   const order =
     weeks
-      .map((date, idx) => [date, idx] as [Dayjs, number])
-      .filter((x) => x[0].isSame(startsOn))
-      .at(0)?.[1] ?? 0
+      .map((date, idx) => {
+        return { date, idx }
+      })
+      .filter(({ date }) => date.isSame(startsOn))
+      .at(0)?.idx ?? 0
 
   const next = (source: Dayjs) => {
-    let ret: Dayjs | undefined = undefined
     const offsets = [1, 2, 3, 4]
-
     for (const offset of offsets) {
-      const month = source.add(offset, "month").startOf("month")
-      const calculate = createWeekCalculator(
-        month,
-        month.endOf("month").toDate()
-      )
+      const d1 = source.add(offset, "month").startOf("month")
+      const d2 = d1.endOf("month").toDate()
+      const calculate = createWeekCalculator(d1, d2)
       const dates = calculate(weekday)
-      ret = order <= dates.length ? dates.at(order)! : undefined
+      const ret = order <= dates.length ? dates.at(order)! : undefined
       if (ret) return ret
     }
     return source
@@ -208,25 +204,19 @@ export function daily(start: Date, limit: RecurranceLimit) {
 /**
  * calculates weekly recurrance by days limited either by date or count
  * @param start Date, where to start from
- * @param days Days[], days for which to calculate
+ * @param days Days[], days to be calculated
  * @param limit Date|number, how many dates to be generated
  * @returns Schedule
  */
 export function weekly(start: Date, days: Days[], limit: RecurranceLimit) {
   const startsOn = immutable(start)
-  const set = uniqueDays()
-
   const calculate = createWeekCalculator(startsOn, limit)
-  for (const day of unique(days)) {
-    const res = calculate(day)
-    res.forEach((x) => set.add(x))
-  }
+  const ret = unique(days)
+    .map((day) => calculate(day))
+    .flatMap((x) => x)
 
-  const arr = isDateLimit(limit)
-    ? Array.from(set)
-    : Array.from(set).splice(0, limit)
-
-  return toSchedule(arr)
+  const result = isDateLimit(limit) ? ret : ret.splice(0, limit)
+  return toSchedule(result)
 }
 /**
  * Claculates monthly recurrance either by day order or by day

@@ -31,6 +31,7 @@ export type RecurranceLimit = Date | number
 export type UniqueDays = Set<Dayjs>
 
 const isDateLimit = (r: RecurranceLimit): r is Date => r instanceof Date
+const isImmutable = (r: Date | Dayjs): r is Dayjs => dayjs.isDayjs(r)
 const sortDates = (set: UniqueDays) =>
   sortBy(Array.from(set), (a, b) => (a.isAfter(b) ? -1 : a.isSame(b) ? 0 : 1))
 
@@ -44,52 +45,33 @@ dayjs.extend(utc)
 function immutable(source: Date) {
   const adjusted = new Date(source.setHours(0, 0, 0))
   const adjustedDay = adjusted.getDay()
-
   const target = dayjs(adjusted).utc(true)
   const targetDay = target.day()
-
   const diff = targetDay - adjustedDay
-  switch (diff) {
-    case -1:
-      return target.add(1, "day")
-    case 0:
-      return target
-    case 1:
-      return target.subtract(1, "day")
-  }
-
-  return target
+  return addDays(target, diff) as Dayjs
 }
 function mutable(source: Dayjs) {
   const target = source.hour(0).minute(0).second(0).toDate()
   const diff = target.getDay() - source.day()
-
-  function addDays(date: Date, days: number) {
-    const result = new Date(date)
-    result.setDate(result.getDate() + days)
-    return result
-  }
-
-  switch (diff) {
-    case -1:
-      return addDays(target, -1)
-    case 0:
-      return target
-    case 1:
-      return addDays(target, 1)
-  }
-
-  return target
+  return addDays(target, diff) as Date
 }
 function toSchedule(unique: UniqueDays | Dayjs[]) {
   const arr = Array.isArray(unique) ? unique : sortDates(unique)
   const dates = arr.map((x) => mutable(x))
-
   const schedule: Schedule = groupBy(dates, (x) => {
     return { month: x.getMonth(), year: x.getFullYear() }
   })
 
   return schedule
+}
+function addDays(date: Date | Dayjs, days: number) {
+  if (isImmutable(date)) {
+    return days === 0 ? date.clone() : date.add(days, "day")
+  } else {
+    const result = new Date(date)
+    if (days !== 0) result.setDate(result.getDate() + days)
+    return result
+  }
 }
 function createLimitPredicate(
   limit: RecurranceLimit,

@@ -103,13 +103,11 @@ function generate(
 function createWeekCalculator(startsOn: Dayjs, limit: RecurranceLimit) {
   const getSentinal = (day: Days) => {
     const diff = startsOn.day() - day
-    if (diff < 0) {
-      return startsOn.add(Math.abs(diff), "day")
-    } else if (diff > 0) {
-      return startsOn.add(7 - diff, "day")
-    } else {
-      return startsOn.add(0, "day")
-    }
+    return diff < 0
+      ? startsOn.add(Math.abs(diff), "day")
+      : diff > 0
+      ? startsOn.add(7 - diff, "day")
+      : startsOn
   }
   const next = (source: Dayjs) => source.add(7, "day")
 

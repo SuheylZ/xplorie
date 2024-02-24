@@ -41,6 +41,8 @@ dayjs.extend(utc)
   Internal Functions
 =========================
 */
+
+
 function immutable(source: Date) {
   const adjusted = new Date(source.setHours(0, 0, 0))
   const adjustedDay = adjusted.getDay()
@@ -103,35 +105,43 @@ function createLimitPredicate(
     return (a: Dayjs) => size() < limit && dayjs.isDayjs(a)
   }
 }
+function generate(
+  startsOn: Dayjs,
+  limit: RecurranceLimit,
+  next: (dt: Dayjs) => Dayjs
+) {
+  const set = new Set<Dayjs>() as UniqueDays
+  const condition = createLimitPredicate(limit, set)
+  let latest = startsOn
+
+  while (condition(latest)) {
+    set.add(latest)
+    latest = next(latest)
+  }
+  return set
+}
 function createWeekCalculator(startsOn: Dayjs, limit: RecurranceLimit) {
-  return (day: Days) => {
-    const days: Dayjs[] = []
-    const sentinal = (() => {
-      const diff = startsOn.day() - day
-      if (diff < 0) {
-        return startsOn.add(Math.abs(diff), "day")
-      } else if (diff > 0) {
-        return startsOn.add(7 - diff, "day")
-      } else {
-        return startsOn.add(0, "day")
-      }
-    })()
-
-    let latest = sentinal
-    const condition = createLimitPredicate(limit, days)
-    while (condition(latest)) {
-      if (latest.day() === sentinal.day()) days.push(latest)
-      latest = latest.add(7, "day")
+  const getSentinal = (day: Days) => {
+    const diff = startsOn.day() - day
+    if (diff < 0) {
+      return startsOn.add(Math.abs(diff), "day")
+    } else if (diff > 0) {
+      return startsOn.add(7 - diff, "day")
+    } else {
+      return startsOn.add(0, "day")
     }
+  }
+  const next = (source: Dayjs) => source.add(7, "day")
 
-    return days
+  return (day: Days) => {
+    const sentinal = getSentinal(day)
+    const set = generate(sentinal, limit, next)
+    return sortDates(set)
   }
 }
 function monthlyByDate(start: Date, limit: RecurranceLimit) {
   const startsOn = immutable(start)
-  const set = uniqueDays()
-
-  const nextDate = (current: Dayjs) => {
+  const next = (current: Dayjs) => {
     const offsets = [1, 2, 3, 4]
     const nextDate =
       offsets
@@ -141,17 +151,11 @@ function monthlyByDate(start: Date, limit: RecurranceLimit) {
     return nextDate
   }
 
-  let latest = startsOn
-  const condition = createLimitPredicate(limit, set)
-  while (condition(latest)) {
-    set.add(latest)
-    latest = nextDate(latest)
-  }
+  const set = generate(startsOn, limit, next)
   return set
 }
 function monthlyByWeekday(start: Date, limit: RecurranceLimit) {
   const startsOn = immutable(start)
-  const days = uniqueDays()
   const weekday = startsOn.day()
 
   const calculate = createWeekCalculator(startsOn.startOf("month"), limit)
@@ -162,31 +166,25 @@ function monthlyByWeekday(start: Date, limit: RecurranceLimit) {
       .filter((x) => x[0].isSame(startsOn))
       .at(0)?.[1] ?? 0
 
-  const getWeekdayByOrder = (dates: Dayjs[]) =>
-    order <= dates.length ? dates.at(order)! : undefined
-
-  const getNext = (source: Dayjs) => {
+  const next = (source: Dayjs) => {
     let ret: Dayjs | undefined = undefined
-    let index = 1
+    const offsets = [1, 2, 3, 4]
 
-    while (!ret) {
-      const first = source.add(index++, "month").startOf("month")
-      const last = first.endOf("month")
-      const calculate = createWeekCalculator(first, last.toDate())
+    for (const offset of offsets) {
+      const month = source.add(offset, "month").startOf("month")
+      const calculate = createWeekCalculator(
+        month,
+        month.endOf("month").toDate()
+      )
       const dates = calculate(weekday)
-      ret = getWeekdayByOrder(dates)
+      ret = order <= dates.length ? dates.at(order)! : undefined
+      if (ret) return ret
     }
-    return ret!
+    return source
   }
 
-  let latest = startsOn
-  const condition = createLimitPredicate(limit, days)
-  while (condition(latest)) {
-    days.add(latest)
-    latest = getNext(latest)
-  }
-
-  return days
+  const set = generate(startsOn, limit, next)
+  return set
 }
 
 /*
@@ -194,6 +192,7 @@ function monthlyByWeekday(start: Date, limit: RecurranceLimit) {
   Public Functions
 =========================
 */
+
 /**
  * calculates daily recurrance either by date or count
  * @param start Date, where to start from
@@ -202,16 +201,9 @@ function monthlyByWeekday(start: Date, limit: RecurranceLimit) {
  */
 export function daily(start: Date, limit: RecurranceLimit) {
   const startsOn = immutable(start)
-  const set = uniqueDays()
-
-  const condition = createLimitPredicate(limit, set)
-  let latest = startsOn
-  while (condition(latest)) {
-    set.add(latest)
-    latest = latest.add(1, "day")
-  }
-
-  return toSchedule(set)
+  const next = (source: Dayjs) => source.add(1, "day")
+  const days = generate(startsOn, limit, next)
+  return toSchedule(days)
 }
 /**
  * calculates weekly recurrance by days limited either by date or count

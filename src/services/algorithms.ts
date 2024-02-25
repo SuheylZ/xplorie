@@ -23,15 +23,11 @@ export function groupBy<T, Key>(arr: Iterable<T>, fn: (arg: T) => Key) {
   for (const value of arr) {
     const key = fn(value)
     const str = JSON.stringify(key)
-
     if (!keyMap.has(str)) keyMap.set(str, key)
-
     const realKey = keyMap.get(str)!
-
     if (map.has(realKey)) map.get(realKey)?.push(value)
     else map.set(realKey, [value])
-  }
-
+  } 
   return map
 }
 /**

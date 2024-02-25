@@ -24,7 +24,6 @@ export enum Months {
   November,
   December = 11
 }
-
 export type Schedule = Map<{ month: number; year: number }, Date[]>
 export type Monthly = "weekday" | "date"
 export type RecurranceLimit = Date | number
@@ -36,14 +35,12 @@ const sortDates = (dates: UniqueDays | Dayjs[]) =>
   sortBy(Array.isArray(dates) ? dates : Array.from(dates), (a, b) =>
     a.isAfter(b) ? -1 : a.isSame(b) ? 0 : 1
   )
-
 dayjs.extend(utc)
 /*
 =========================
   Internal Functions
 =========================
 */
-
 function immutable(source: Date) {
   const adjusted = new Date(source.setHours(0, 0, 0))
   const adjustedDay = adjusted.getDay()
@@ -102,8 +99,8 @@ function generate(
   }
   return set
 }
-function createNextMonthDate() {
-  const next = (source: Dayjs) => {
+function createMonthDate() {
+  return (source: Dayjs) => {
     const offsets = [1, 2, 3, 4]
     for (const offset of offsets) {
       const target = source.add(offset, "month")
@@ -111,13 +108,13 @@ function createNextMonthDate() {
     }
     return source
   }
-  return next
 }
-function createNextMonthWeekday(startsOn: Dayjs) {
-  const counter: number[] = []
-  while (startsOn.date() - WEEKLENGTH * counter.length >= WEEKLENGTH)
-    counter.push(0)
-  const order = counter.length
+function createMonthWeekday(startsOn: Dayjs) {
+  const order = (() => {
+    let index = 0
+    while (startsOn.date() - WEEKLENGTH * index >= WEEKLENGTH) index++
+    return index
+  })()
 
   return (source: Dayjs) => {
     const offsets = [1, 2, 3, 4]
@@ -136,7 +133,6 @@ function createNextMonthWeekday(startsOn: Dayjs) {
   Public Functions
 =========================
 */
-
 /**
  * calculates daily recurrance either by date or count
  * @param start Date, where to start from
@@ -185,8 +181,7 @@ export function weekly(start: Date, days: Days[], limit: RecurranceLimit) {
 export function monthly(start: Date, type: Monthly, limit: RecurranceLimit) {
   const startsOn = immutable(start)
   const next =
-    type === "date" ? createNextMonthDate() : createNextMonthWeekday(startsOn)
-
+    type === "date" ? createMonthDate() : createMonthWeekday(startsOn)
   const days = generate(startsOn, limit, next)
   return toSchedule(days)
 }

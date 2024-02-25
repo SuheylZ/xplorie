@@ -30,7 +30,6 @@ export type RecurranceLimit = Date | number
 export type UniqueDays = Set<Dayjs>
 const WEEKLENGTH = 7
 const isDateLimit = (r: RecurranceLimit): r is Date => r instanceof Date
-const isImmutable = (r: Date | Dayjs): r is Dayjs => dayjs.isDayjs(r)
 const sortDates = (dates: UniqueDays | Dayjs[]) =>
   sortBy(Array.isArray(dates) ? dates : Array.from(dates), (a, b) =>
     a.isAfter(b) ? -1 : a.isSame(b) ? 0 : 1
@@ -47,12 +46,13 @@ function immutable(source: Date) {
   const target = dayjs(adjusted).utc(true)
   const targetDay = target.day()
   const diff = targetDay - adjustedDay
-  return addDays(target, diff) as Dayjs
+  return diff === 0 ? target : target.add(diff, "day")
 }
 function mutable(source: Dayjs) {
   const target = source.hour(0).minute(0).second(0).toDate()
   const diff = target.getDay() - source.day()
-  return addDays(target, diff) as Date
+  if (diff !== 0) target.setDate(target.getDate() + diff)
+  return target
 }
 function toSchedule(unique: UniqueDays | Dayjs[]) {
   const arr = sortDates(unique)
@@ -62,15 +62,6 @@ function toSchedule(unique: UniqueDays | Dayjs[]) {
   })
 
   return schedule
-}
-function addDays(date: Date | Dayjs, days: number) {
-  if (isImmutable(date)) {
-    return days === 0 ? date.clone() : date.add(days, "day")
-  } else {
-    const result = new Date(date)
-    if (days !== 0) result.setDate(result.getDate() + days)
-    return result
-  }
 }
 function createLimitPredicate(
   limit: RecurranceLimit,

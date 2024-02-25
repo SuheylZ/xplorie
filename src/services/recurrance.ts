@@ -29,11 +29,13 @@ export type Schedule = Map<{ month: number; year: number }, Date[]>
 export type Monthly = "weekday" | "date"
 export type RecurranceLimit = Date | number
 export type UniqueDays = Set<Dayjs>
-
+const WEEKLENGTH = 7
 const isDateLimit = (r: RecurranceLimit): r is Date => r instanceof Date
 const isImmutable = (r: Date | Dayjs): r is Dayjs => dayjs.isDayjs(r)
-const sortDates = (set: UniqueDays) =>
-  sortBy(Array.from(set), (a, b) => (a.isAfter(b) ? -1 : a.isSame(b) ? 0 : 1))
+const sortDates = (dates: UniqueDays | Dayjs[]) =>
+  sortBy(Array.isArray(dates) ? dates : Array.from(dates), (a, b) =>
+    a.isAfter(b) ? -1 : a.isSame(b) ? 0 : 1
+  )
 
 dayjs.extend(utc)
 /*
@@ -56,7 +58,7 @@ function mutable(source: Dayjs) {
   return addDays(target, diff) as Date
 }
 function toSchedule(unique: UniqueDays | Dayjs[]) {
-  const arr = Array.isArray(unique) ? unique : sortDates(unique)
+  const arr = sortDates(unique)
   const dates = arr.map((x) => mutable(x))
   const schedule: Schedule = groupBy(dates, (x) => {
     return { month: x.getMonth(), year: x.getFullYear() }
@@ -100,66 +102,33 @@ function generate(
   }
   return set
 }
-function createWeekCalculator(startsOn: Dayjs, limit: RecurranceLimit) {
-  const getSentinal = (day: Days) => {
-    const diff = startsOn.day() - day
-    return diff < 0
-      ? startsOn.add(Math.abs(diff), "day")
-      : diff > 0
-      ? startsOn.add(7 - diff, "day")
-      : startsOn
-  }
-  const next = (source: Dayjs) => source.add(7, "day")
-
-  return (day: Days) => {
-    const sentinal = getSentinal(day)
-    const set = generate(sentinal, limit, next)
-    return sortDates(set)
-  }
-}
-function monthlyByDate(start: Date, limit: RecurranceLimit) {
-  const startsOn = immutable(start)
-  const next = (current: Dayjs) => {
-    const offsets = [1, 2, 3, 4]
-    const nextDate =
-      offsets
-        .map((offset) => current.add(offset, "month"))
-        .filter((x) => x.date() === current.date())
-        .at(0) ?? current
-    return nextDate
-  }
-
-  const set = generate(startsOn, limit, next)
-  return set
-}
-function monthlyByWeekday(start: Date, limit: RecurranceLimit) {
-  const startsOn = immutable(start)
-  const weekday = startsOn.day()
-  const calculate = createWeekCalculator(startsOn.startOf("month"), limit)
-  const weeks = calculate(startsOn.day())
-  const order =
-    weeks
-      .map((date, idx) => {
-        return { date, idx }
-      })
-      .filter(({ date }) => date.isSame(startsOn))
-      .at(0)?.idx ?? 0
-
+function createNextMonthDate() {
   const next = (source: Dayjs) => {
     const offsets = [1, 2, 3, 4]
     for (const offset of offsets) {
-      const d1 = source.add(offset, "month").startOf("month")
-      const d2 = d1.endOf("month").toDate()
-      const calculate = createWeekCalculator(d1, d2)
-      const dates = calculate(weekday)
-      const ret = order <= dates.length ? dates.at(order)! : undefined
-      if (ret) return ret
+      const target = source.add(offset, "month")
+      if (target.date() === source.date()) return target
     }
     return source
   }
+  return next
+}
+function createNextMonthWeekday(startsOn: Dayjs) {
+  const counter: number[] = []
+  while (startsOn.date() - WEEKLENGTH * counter.length >= WEEKLENGTH)
+    counter.push(0)
+  const order = counter.length
 
-  const set = generate(startsOn, limit, next)
-  return set
+  return (source: Dayjs) => {
+    const offsets = [1, 2, 3, 4]
+    for (const offset of offsets) {
+      const t1 = source.add(offset, "month").startOf("month")
+      const days = Math.abs((source.day() - t1.day()) * (order * WEEKLENGTH))
+      const target = t1.add(days, "day")
+      return target
+    }
+    return source
+  }
 }
 
 /*
@@ -189,23 +158,35 @@ export function daily(start: Date, limit: RecurranceLimit) {
  */
 export function weekly(start: Date, days: Days[], limit: RecurranceLimit) {
   const startsOn = immutable(start)
-  const calculate = createWeekCalculator(startsOn, limit)
-  const ret = unique(days)
-    .map((day) => calculate(day))
-    .flatMap((x) => x)
+  const getSentinal = (day: Days) => {
+    const diff = day - startsOn.day()
+    const offset = diff < 0 ? WEEKLENGTH - diff : diff
+    return startsOn.add(offset, "day")
+  }
+  const next = (source: Dayjs) => source.add(WEEKLENGTH, "day")
+  const t0: Dayjs[] = []
+  unique(days).forEach((day) => {
+    const sentinal = getSentinal(day)
+    const set = generate(sentinal, limit, next)
+    Array.from(set).forEach((x) => t0.push(x))
+  })
 
-  const result = isDateLimit(limit) ? ret : ret.splice(0, limit)
-  return toSchedule(result)
+  const t1 = sortDates(t0)
+  const t2 = isDateLimit(limit) ? t1 : sortDates(t1).splice(0, limit)
+  return toSchedule(t2)
 }
 /**
- * Claculates monthly recurrance either by day order or by day
+ * Calculates monthly recurrance either by day order or by day
  * @param start Date, start date
  * @param type "weekday"|"date"
  * @param limit Date|number, to limit the number of dates
  * @returns Schedule
  */
 export function monthly(start: Date, type: Monthly, limit: RecurranceLimit) {
-  const calculate = type === "date" ? monthlyByDate : monthlyByWeekday
-  const days = calculate(start, limit)
+  const startsOn = immutable(start)
+  const next =
+    type === "date" ? createNextMonthDate() : createNextMonthWeekday(startsOn)
+
+  const days = generate(startsOn, limit, next)
   return toSchedule(days)
 }

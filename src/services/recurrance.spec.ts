@@ -37,17 +37,18 @@ describe("recurrance", () => {
   }
 
   describe("daily", () => {
-    test("N days", () => {
+    test("10 days from February 1", () => {
       const a1 = daily(fixture.thursdayFeb1, 10)
       const [days, months] = fixture.unwrap(a1)
       expect(months.length).toBeLessThanOrEqual(2)
       expect(days.length).toBe(10)
     })
 
-    test("until a date", () => {
+    test("February 1 to March 1", () => {
       const a1 = daily(fixture.thursdayFeb1, fixture.fridayMarch1)
       const [days, months] = fixture.unwrap(a1)
-      const diff = fixture.dateDiffInDays(fixture.fridayMarch1, fixture.thursdayFeb1) + 1
+      const diff =
+        fixture.dateDiffInDays(fixture.fridayMarch1, fixture.thursdayFeb1) + 1
 
       expect(days.length).toBe(diff)
       expect(months.length).toBeLessThanOrEqual(2)
@@ -55,7 +56,7 @@ describe("recurrance", () => {
   })
 
   describe("weekly", () => {
-    test("limit by date", () => {
+    test("Every Thursday & Satyrday from February 1", () => {
       const a1 = weekly(
         fixture.thursdayFeb1,
         [Days.Saturday, Days.Thursday],
@@ -69,29 +70,29 @@ describe("recurrance", () => {
       expectMonths(months, Months.February, Months.March)
     })
 
-    test("limit by Count", () => {
-      const a1 = weekly(fixture.thursdayFeb1, [Days.Saturday, Days.Thursday], 4)
+    test("5 Thursday & Saturdays from february 1", () => {
+      const a1 = weekly(fixture.thursdayFeb1, [Days.Saturday, Days.Thursday], 5)
       const [days, months] = fixture.unwrap(a1)
 
-      expect(days.length).toBe(4)
+      expect(days.length).toBe(5)
       expect(months.length).toBe(1)
       expect(months.at(0)).toBe(Months.February)
-      expectDays(days, Days.Saturday, Days.Thursday)
+      expectDays(days, Days.Thursday, Days.Saturday)
     })
   })
 
   describe("monthly", () => {
     describe("N dates", () => {
-      test("every first thursday", () => {
+      test("5 first Thursday from February 1", () => {
         const dates = monthly(fixture.thursdayFeb1, "weekday", 5)
         const [days, months] = fixture.unwrap(dates)
 
         expect(days.length).toBe(5)
-        expect(months.length).toBeLessThanOrEqual(5)
-        expectDays(days, Days.Thursday)
+        expect(months.length).toBe(5)
+        days.every((x) => expect(x.getDay()).toBe(Days.Thursday))
       })
 
-      test("1st of every month", () => {
+      test("5 1st of every month from February 1", () => {
         const dates = monthly(fixture.thursdayFeb1, "date", 5)
         const [days, months] = fixture.unwrap(dates)
 
@@ -100,7 +101,7 @@ describe("recurrance", () => {
         days.forEach((date) => expect(date.getDate()).toBe(1))
       })
 
-      test("31st of every month", () => {
+      test("5 31st of every month from January 31", () => {
         const wednsday31January = new Date(2024, 0, 31)
         const dates = monthly(wednsday31January, "date", 5)
         const [days, months] = fixture.unwrap(dates)
@@ -123,8 +124,7 @@ describe("recurrance", () => {
 
         expect(days.length).toBe(9)
         expect(months.length).toBeLessThanOrEqual(9)
-        expectDays(days, Days.Thursday)
-        //.forEach((date) => expect(date.day()).toBe(Days.Thursday))
+        days.every((x) => expect(x.getDate()).toBe(1))
       })
 
       test("1st of every month", () => {
@@ -142,6 +142,11 @@ describe("recurrance", () => {
     })
   })
 })
+
+
+
+
+
 
 
 
